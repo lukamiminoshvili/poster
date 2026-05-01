@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const http = require('http');
 
-// პორტის განსაზღვრა Render-ისთვის
+// პორტის განსაზღვრა Render-ისთვის (აუცილებელია!)
 const PORT = process.env.PORT || 3000;
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
@@ -11,6 +11,7 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY
 async function postToFacebook() {
      console.log('🚀 პროცესი დაიწყო: ვამოწმებ ახალ პროდუქტებს...');
      try {
+          // 1. ვიღებთ პირველივე პროდუქტს, რომელიც ჯერ არ დადებულა
           const { data, error } = await supabase
                .from('ITVET pixelshop products table')
                .select('*')
@@ -28,6 +29,7 @@ async function postToFacebook() {
 
           console.log(`⏳ ვპოსტავ: ${product.title}`);
 
+          // 2. ფეისბუქზე დაპოსტვა
           const fbUrl = `https://graph.facebook.com/v19.0/${process.env.FB_PAGE_ID}/photos`;
 
           await axios.post(fbUrl, {
@@ -36,6 +38,7 @@ async function postToFacebook() {
                access_token: process.env.FB_ACCESS_TOKEN
           });
 
+          // 3. სტატუსის განახლება Supabase-ში
           const { error: updateError } = await supabase
                .from('ITVET pixelshop products table')
                .update({ is_posted: true })
@@ -55,7 +58,7 @@ async function postToFacebook() {
 
 // სერვერის შექმნა
 http.createServer(async (req, res) => {
-     // CORS-ის დამატება, რომ აიფონმა არ დაჰბლოკოს მოთხოვნა
+     // CORS-ის დამატება
      res.setHeader('Access-Control-Allow-Origin', '*');
      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
@@ -68,5 +71,5 @@ http.createServer(async (req, res) => {
           res.end('ბოტი ჩართულია და მუშაობს! გამოიყენე /post-now პოსტის დასადებად.');
      }
 }).listen(PORT, () => {
-     console.log(`✅ სერვერი ჩაირთო პორტზე: ${PORT}`);
+     console.log(`✅ სერვერი წარმატებით ჩაირთო პორტზე: ${PORT}`);
 });
