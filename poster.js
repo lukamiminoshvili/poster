@@ -59,22 +59,49 @@ async function postToFacebook() {
      }
 }
 
-// დაგეგმვა ყოველდღე 14:00-ზე (Tbilisi Time)
-cron.schedule('0 14 * * *', () => {
-     postToFacebook();
-}, {
-     timezone: "Asia/Tbilisi"
-});
+// ... (კავშირის და ცვლადების ნაწილი იგივეა)
 
-// პირველი გაშვება ტესტისთვის (შეგიძლია წაშალო, როცა დარწმუნდები რომ მუშაობს)
-postToFacebook();
+// ეს ფუნქცია იგივე რჩება, რაც გვქონდა
+async function postToFacebook() {
+     try {
+          const { data, error } = await supabase
+               .from('ITVET pixelshop products table')
+               .select('*')
+               .eq('is_posted', false)
+               .order('id', { ascending: true })
+               .limit(1);
 
-const http = require('http');
-const port = process.env.PORT || 3000;
+          if (error || !data.length) return { success: false, message: 'პროდუქტები არ არის' };
 
-http.createServer((req, res) => {
-     res.writeHead(200, { 'Content-Type': 'text/plain' });
-     res.end('Bot is running!');
-}).listen(port, () => {
-     console.log(`Server is listening on port ${port}`);
-});
+          const product = data[0];
+          const fbUrl = `https://graph.facebook.com/v19.0/${process.env.FB_PAGE_ID}/photos`;
+
+          await axios.post(fbUrl, {
+               url: product.image,
+               caption: `🛍️ ${product.title}\n💰 ფასი: ${product.price} ლარი`,
+               access_token: process.env.FB_ACCESS_TOKEN
+          });
+
+          await supabase
+               .from('ITVET pixelshop products table')
+               .update({ is_posted: true })
+               .eq('id', product.id);
+
+          return { success: true, title: product.title };
+     } catch (err) {
+          return { success: false, error: err.message };
+     }
+}
+
+// ვამატებთ მარშრუტს (Route) ღილაკისთვის
+http.createServer(async (req, res) => {
+     // თუ ვინმე შევა მისამართზე /post-now
+     if (req.url === '/post-now') {
+          const result = await postToFacebook();
+          res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify(result));
+     } else {
+          res.writeHead(200, { 'Content-Type': 'text/plain' });
+          res.end('Bot is running!');
+     }
+}).listen(port);

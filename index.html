@@ -1,0 +1,29 @@
+<button id="postBtn" style="padding: 15px 30px; font-size: 20px; cursor: pointer;">
+     🚀 დადე შემდეგი პოსტი
+</button>
+
+<script>
+     document.getElementById('postBtn').onclick = async function () {
+          this.disabled = true;
+          this.innerText = 'იპოსტება...';
+
+          // აქ ჩაწერე შენი Render-ის მისამართი (რომელიც Dashboard-ზე გიწერია)
+          const renderUrl = 'https://შენი-პროექტის-სახელი.onrender.com/post-now';
+
+          try {
+               const response = await fetch(renderUrl);
+               const data = await response.json();
+
+               if (data.success) {
+                    alert('წარმატებით დაიდო: ' + data.title);
+               } else {
+                    alert('შეცდომა: ' + data.message);
+               }
+          } catch (err) {
+               alert('ვერ დაუკავშირდა სერვერს');
+          } finally {
+               this.disabled = false;
+               this.innerText = '🚀 დადე შემდეგი პოსტი';
+          }
+     };
+</script>
