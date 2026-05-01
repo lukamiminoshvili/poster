@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
+const http = require('http');
 const cron = require('node-cron');
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
