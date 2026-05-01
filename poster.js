@@ -68,3 +68,13 @@ cron.schedule('0 14 * * *', () => {
 
 // პირველი გაშვება ტესტისთვის (შეგიძლია წაშალო, როცა დარწმუნდები რომ მუშაობს)
 postToFacebook();
+
+const http = require('http');
+const port = process.env.PORT || 3000;
+
+http.createServer((req, res) => {
+     res.writeHead(200, { 'Content-Type': 'text/plain' });
+     res.end('Bot is running!');
+}).listen(port, () => {
+     console.log(`Server is listening on port ${port}`);
+});
