@@ -3,15 +3,13 @@ const { createClient } = require('@supabase/supabase-js');
 const axios = require('axios');
 const http = require('http');
 
-// პორტის განსაზღვრა Render-ისთვის (აუცილებელია!)
 const PORT = process.env.PORT || 3000;
-
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 async function postToFacebook() {
      console.log('🚀 პროცესი დაიწყო: ვამოწმებ ახალ პროდუქტებს...');
      try {
-          // 1. ვიღებთ პირველივე პროდუქტს, რომელიც ჯერ არ დადებულა
+          // 1. ვიღებთ მხოლოდ 1 პროდუქტს, რომელიც ჯერ არ დაპოსტილა
           const { data, error } = await supabase
                .from('ITVET pixelshop products table')
                .select('*')
@@ -19,32 +17,34 @@ async function postToFacebook() {
                .order('id', { ascending: true })
                .limit(1);
 
-          if (error) throw error;
+          if (error) throw new Error(`Supabase Error: ${error.message}`);
+
           if (!data || data.length === 0) {
-               return { success: false, message: 'ბაზაში ყველა პროდუქტი უკვე დაპოსტილია!' };
+               console.log('ℹ️ დაუპოსტავი პროდუქტები არ მოიძებნა.');
+               return { success: false, message: 'ახალი პროდუქტები არ არის' };
           }
 
           const product = data[0];
-          const message = `🛍️ იჩქარეთ! მხოლოდ ჩვენთან:\n\n📌 ${product.title}\n💰 ფასი: ${product.price} ლარი\n\nმოგვწერეთ შესაძენად! ✨`;
 
-          console.log(`⏳ ვპოსტავ: ${product.title}`);
-
-          // 2. ფეისბუქზე დაპოსტვა
-          const fbUrl = `https://graph.facebook.com/v19.0/${process.env.FB_PAGE_ID}/photos`;
-
-          await axios.post(fbUrl, {
-               url: product.image,
-               caption: message,
-               access_token: process.env.FB_ACCESS_TOKEN
-          });
-
-          // 3. სტატუსის განახლება Supabase-ში
+          // 🛡️ კრიტიკული ნაბიჯი: ჯერ ვბლოკავთ პროდუქტს ბაზაში (is_posted = true)
+          // ეს გამორიცხავს გაორებას, თუ Render-მა პარალელური პროცესი გაუშვა
           const { error: updateError } = await supabase
                .from('ITVET pixelshop products table')
                .update({ is_posted: true })
                .eq('id', product.id);
 
-          if (updateError) throw updateError;
+          if (updateError) throw new Error(`Update Error: ${updateError.message}`);
+
+          console.log(`⏳ ვპოსტავ: ${product.title}`);
+
+          // 2. ფოტოს ატვირთვა Facebook-ზე
+          const fbUrl = `https://graph.facebook.com/v19.0/${process.env.FB_PAGE_ID}/photos`;
+
+          await axios.post(fbUrl, {
+               url: product.image,
+               caption: `🛍️ ${product.title}\n💰 ფასი: ${product.price} ლარი`,
+               access_token: process.env.FB_ACCESS_TOKEN
+          });
 
           console.log(`✅ წარმატებით დაიდო: ${product.title}`);
           return { success: true, title: product.title };
@@ -56,9 +56,9 @@ async function postToFacebook() {
      }
 }
 
-// სერვერის შექმნა
+// სერვერის შექმნა, რომელსაც iPhone-ის Shortcut-ი დაუკავშირდება
 http.createServer(async (req, res) => {
-     // CORS-ის დამატება
+     // CORS მხარდაჭერა
      res.setHeader('Access-Control-Allow-Origin', '*');
      res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
 
@@ -68,8 +68,8 @@ http.createServer(async (req, res) => {
           res.end(JSON.stringify(result));
      } else {
           res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('ბოტი ჩართულია და მუშაობს! გამოიყენე /post-now პოსტის დასადებად.');
+          res.end('ITVET ბოტი მუშაობს და მზადაა!');
      }
 }).listen(PORT, () => {
-     console.log(`✅ სერვერი წარმატებით ჩაირთო პორტზე: ${PORT}`);
+     console.log(`📡 სერვერი ჩაირთო პორტზე: ${PORT}`);
 });
